@@ -1,0 +1,241 @@
+TYPES OF PARAMETERS IN ANGULAR
+1.	PATH PARAMETERS
+2.	QUERY PARAMETERS
+3.	MATRIX PARAMETERS
+1.	Path Parameters
+1. Setup route with  “/:” in routes of the app.
+{
+    path : `${ROUTES_TOKENS.SHOP}/:categoryId`,
+    component : ProductsViewComponent
+  },
+
+2. Now we will add the routerlink in component from where we want to navigate and pass the parameter also
+<button [routerLink]="[ROUTES_TOKENS.SHOP ,Category.SEASONAL_PIE]" routerLinkActive="active-link-li" mat-menu-item>Seasonal Pies</button>
+
+3.Now we will add input property to the component which will consume the path.Make sure to use same name as in our case it is categoryId
+private readonly pieService = inject(PieService);
+  @Input()  set categoryId(val : string) {
+  this.pieService.setSelectedCategory(val);
+  }
+
+
+
+
+
+4.Now in our app.config file we will add component binding function for our router
+provideRouter(
+      ROUTES,
+      withDebugTracing(),
+      withComponentInputBinding()
+    )
+
+
+
+
+
+
+
+
+
+
+
+
+
+2.	QUERY PARAMETERS
+1.	First we will find a place where we want to add routerlink with query parameter and add it.( [routerLink]="['./']" this tells router that we are not changing the route).
+<button
+    *ngFor="let pie of pies$ | async"
+    class="image-button"
+    [routerLink]="['./']"
+    [queryParams]="{productId: pie.id }"
+    queryParamsHandling="merge"
+    routerLinkActive="active-link"
+    ariaCurrentWhenActive="page"
+  >
+2. Now we can consume queryparams from anywhere in the app and they will be available globally and they are present in queryparamMap observable of activitedRoute . we can get them in service and then provide to any component. 
+private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly selectedPie = this.activatedRoute.queryParamMap.pipe(
+    map((params) => params.get('productId') ));
+
+
+
+
+
+
+
+
+
+
+
+
+NAVIGATE AND NAVIGATEBYURL FUNCTION 
+
+this.router.navigate([`../${ROUTES_TOKENS.SHOP}`, pie.category],{
+      relativeTo: this.activatedRoute,
+      queryParams: {productId: pie.id},
+      queryParamsHandling : "merge"
+
+    })
+  }
+
+
+
+
+
+
+
+Adding child routes
+1. first we will define routes and the component to be rendered.
+export enum PROUDCT_ROUTER_TOKENS {
+    DETAIL='detail',
+    CUSTOMIZE='customize'
+}
+export const PROUDCT_ROUTES : Routes = [
+    {
+        path: PROUDCT_ROUTER_TOKENS.DETAIL,
+        component: DetailViewComponent
+    },
+    {
+        path : PROUDCT_ROUTER_TOKENS.CUSTOMIZE,
+        component: CustomizeViewComponent
+    }
+]
+2. Next we will place router-outerlet where we want to render these specific component in the routeroutlet.
+<div class="detail-wrapper">
+     <router-outlet></router-outlet>
+    </div>
+
+3.Next we will add routerlink properties like path or queryparams on buttons from where we want to trigger the components to be rendered.
+<button
+    *ngFor="let pie of pies$ | async"
+    class="image-button"
+    [routerLink] ="[ customize ? customizeLink : detailLink]"
+    routerLinkActive="active-link"
+    [queryParams] = "{productId : pie.id}"
+    queryParamsHandling= "merge"
+
+  >
+
+4 In the last we will add child routes with property children to the main routes of the angular app.
+export const ROUTES: Routes = [
+  {
+    path: '',
+    redirectTo: ROUTER_TOKENS.HOME,
+    pathMatch: 'full',
+  },
+  {
+    path: ROUTER_TOKENS.HOME,
+    component: HomeComponent,
+  },
+  {
+    path: `${ROUTER_TOKENS.SHOP}/:categoryId` ,
+    component: ProductsViewComponent,
+    children : PROUDCT_ROUTES
+  },
+
+
+Auxiliary or Named Router-outlet
+1.	First declare it where you want to show like root of the dom.
+2.	<app-header></app-header>
+3.	<router-outlet/>
+4.	<router-outlet
+5.	[name] = "ROUTER_TOKENS.CART"
+6.	></router-outlet>
+2. Now add the route to the routes array like this
+{
+
+    path : ROUTER_TOKENS.CHECKOUT,
+    outlet: ROUTER_TOKENS.CART,
+    component: CartComponent
+  },
+
+
+3. Add outlet in the form of key value pair from where you want the comp to be open suppose in header
+readonly outlets ={[ROUTER_TOKENS.CART] : ROUTER_TOKENS.CHECKOUT}
+
+4. Now add the outlet to the button from where you want the component to open in template. 
+  <button
+            mat-menu-item
+            [routerLink] = "['/' , {outlets}]"
+            queryParamsHandling="merge"
+          >
+5. To close the element we need to remove the router-outlet from the main url using router
+close() {
+   this.router.navigate([{outlets: {[ROUTER_TOKENS.CART] : null}}] ,{
+    queryParamsHandling : 'merge'
+   })
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+LAZY LOADING MODULE BASED COMPONENT
+1.	In module based app we can lazy load the component using loadChildren property.
+{
+    path: ROUTER_TOKENS.ABOUT,
+    loadChildren: () => import('./about/about.module').then(mod => mod.AboutModule )
+  },
+
+2.	Define routes in the module to be loaded for a particular route
+const ABOUT_ROUTES : Routes = [
+  {
+    path : '',
+    component : AboutComponent
+
+  }
+]
+
+3.	Do add routermodule.forchild to the current module of your app 
+@NgModule({
+  imports: [
+RouterModule.forChild(ABOUT_ROUTES)
+  ],
+  declarations: [AboutComponent],
+  exports: [AboutComponent]
+})
+
+
+
+
+
+
+LAZY LOADING STANDALONE COMPONENT
+1.	In lazy loading component we can use use loadComponent property in routes file
+{
+    path: ROUTER_TOKENS.CONTACT,
+    loadComponent : () => import('./contact/contact.component').then(m =>m.ContactComponent)
+  },
+LAZY LOADING NESTED ROUTER-OUT COMPONENTS
+1.	We will use loadChildren prop in routes file
+{
+    path: `${ROUTER_TOKENS.SHOP}/:categoryId` ,
+    loadChildren : () => import('./products-view/products.routes').then(m => m.PRODUCT_ROUTES)
+  },
+2.	Make sure to have default and children property in routes file of that nested router-outlet
+export const PRODUCT_ROUTES: Routes = [
+  {
+    path: '',
+    component: ProductsViewComponent,
+    children : [
+      {
+        path: PRODUCT_ROUTER_TOKENS.DETAIL,
+        component: DetailViewComponent
+      },
+      {
+        path: PRODUCT_ROUTER_TOKENS.CUSTOMIZE,
+        component: CustomizeViewComponent
+      }
+    ]
+  },
+  
+];
+
